@@ -1,0 +1,40 @@
+---
+title: "Untitled"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r, , results  = 'asis'}
+library(readr)
+library(readxl)
+library(tidyverse)
+library(stargazer)
+library(kableExtra)
+all_DAC_codes <- read_excel("all_DAC_codes.xls", col_names = FALSE)
+dempurposecodes3 <- read_csv("dempurposecodes3.csv")
+narrow <- merge(all_DAC_codes, dempurposecodes3, by.x = 'X__3', by.y = 'PurposeCode') %>%
+  filter(dem_purpose == 1) %>%
+  select(Category =X__1, Description = X__2)
+
+
+kable(narrow, longtable = TRUE) %>%
+  kable_styling(full_width = FALSE, latex_options = c("hold_position", "repeat_header")) %>%
+  column_spec(1, width = '10em', bold = T, border_right = T) %>%
+  column_spec(2, width = "30em")
+
+```
+
+##Appendix D2: Broad Codings of Democracy
+
+```{r, results  = 'asis'}
+dempurposecodes2 <- read_csv("dempurposecodes2.csv")
+broad <- merge(all_DAC_codes, dempurposecodes2, by.x = 'X__3', by.y = 'PurposeCode') %>%
+  filter(dem_purpose == 1) %>%
+  select(Category =X__1, Description = X__2)
+
+kable(broad, longtable = TRUE) %>%
+  kable_styling(full_width = FALSE, latex_options = c("hold_position", "repeat_header")) %>%
+  column_spec(1, width = '10em', bold = T, border_right = T) %>%
+  column_spec(2, width = "30em")
+```

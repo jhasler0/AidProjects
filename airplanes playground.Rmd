@@ -1,0 +1,1019 @@
+---
+title: "Showing Their Age: Examining Which Outcomes Aid Actors Prioritize"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = 'asis')
+```
+
+```{r}
+library(tidyverse)
+library(kableExtra)
+library(plm)
+library(stargazer)
+library(countrycode)
+library(readr)
+library(car)
+library(readxl)
+library(wbstats)
+library(knitr)
+library(broom)
+library(dotwhisker)
+library(sandwich)
+library(lmtest)
+library(gridExtra)
+library(robustHD)
+```
+
+
+
+
+
+##Introduction
+
+Infrastructure aid often constitutes the building blocks of larger aid projects with loftier goals. Aid geared towards democratization, the military, poverty reduction, health crises and economic development usually involves at least some aid earmarked for infrastructure repair and construction. This type of aid is understudied, but offers a simple and intuitive way to understand how actors distribute aid and what outcomes they prioritize.
+
+While it can be hard to judge the success of more complex aid packages, infrastructure aid is often targeted as specific sectors that can be easily measured, such as travel and communications. For example, aid targeted at developing a nations telecommunications network can be judged through statistics regarding that nation's improvement or lack there of in the number of people connected through phone and data lines. Similarly, aid aimed at airports and aerospace regulation can be judged by the number of flights, passengers, and air freight moved around the country.
+
+In this paper, we show that while infrastructure aid largely does improve the sector it is intended for, different parts of the sector are privaleged by different delivery actors. While these outcomes may not be of interest in themselves for political scientists, they often are used in combined indicators or as proxies for other concepts. Thus, a better understanding of how these outcomes are reached is critical to research that uses these indicators, even if in indirect ways.
+
+We argue that infrastructure aid can be aimed at improving established, modern, or advanced technologies. In developing nations, all three of these will likely be lacking but having one before the others is rarely required. We show that while donor states and the multilateral international organizations (IGOs) aim their infrastructure funds on established technologies that are already outdated in their home countries, recipient governments typically target modern technologies that are actively used and still being developed in Western countries. Finally, advanced technologies that will be most useful at a future date but have a muted impact in the present are preferred by private actors such as corporations since these actors are considering future opportunities to profit in and from the developing nation. While NGOs do not strongly favor any one technological group, but they are worse at developing advanced outcomes.
+
+```{r}
+
+`Preferred_Technology` <- c('Established','Modern','Advanced')
+`Delivery_Method` <- c('Donor Governments, IGOs','Recipient Governments','Recipient Governments and Corporations')
+
+kable(data.frame(`Preferred_Technology`,`Delivery_Method`))
+
+```
+
+##Disaggregating the Delivery Actor
+Foreign aid comes from various wealthy countries, especially those in the OECD, but the way it is delivered varies even within the donor-recipient relationship. While some funds might be channelled through an NGO or the recipient government, others might be delivered and used directly by the donor state. For this project, we considered five types of delivery actors: donor governments, recipient governments, NGOs (including educational organizations), IGOs, and corporations.
+
+include a larger literature review here that cites the other working paper.
+
+##Separating Infrastructure Outcomes
+In this paper, we separate infrastructure into three potential categories depending on its level of technological advancement. Older technologies that are widely used in advanced societies with little room for improvement are considered "established." Good examples of these include passenger railways and fixed line (landline) telephones wired directly to peoples homes. These are technologies that were invented at least a century ago and have been widely adopted and used. While they are still in use and existing infrastructure may be  replaced, these technologies have for the most part advanced to a terminal stage and are being displaced with more advanced technologies they cannot compete with.
+
+"Modern" technologies are those that are still actively being developed and upgraded and may not have fully expanded across even advanced countries at a cost that all individuals can afford. Good examples include mobile/cellular telephones and passenger air travel. These newer technologies have typically been around for a few decades and usually are actively pushing out established technologies such as passenger railway travel and fixed line telephones.
+
+Finally, "advanced" technologies are those that are on the cutting edge of technological advancement. While these inventions may also be somewhat common in advanced countries, they are still new and it is not assumed that everyone in those countries will have access to them. The best example would be high speed internet and data that makes smart phones and wearables possible.
+
+The most important aspect of modern and advanced infrastructure technologies is that they do not need established technologies to exist to be used. Continuing with the telecommunications example, most advanced states established nationwide fixed-line telephone before building cellular towers and finally upgrading most of those connections to carry high-speed Internet. Cellular towers or high speed Internet, however, can be made available without those earlier technologies.
+
+For those that work on issues related to infrastructure aid in Africa, this should come as no surprise. Many countries have prioritized cellular networks over fixed line telephones because the technology is more versatile and does not need to be repaired as often. expand...
+
+##Design
+
+The goal of this note is to show that donors systematically create different results on the type of infrastructure they are trying to improve in developing country. With this in mind, five different types of infrastructure aid were considered: railways, air travel, telecommunications, power, and shipping. Accross these five categories, 21 indicators were chosen from the World Bank's indicators and categorized into the three theoretical categories of Established, Modern, and Advanced technologies. These are summarized in the following table.
+
+```{r}
+
+Indicators <- c('Coal','Fossil Fuels', 'Fixed Phone Subscriptions', 'Port Infrastructure','Port Traffic','Rail Freight','Rail Passengers','Rail Lines in Km','Air Freight','Air Passengers','Number of Flights','Liner Index','Mobile Cellular Subscriptions','Natural Gas','Oil', '% Internet Users','Broadband Subscriptions','Secure Servers','Hydro','Nuclear','Renewable (not Hydro)')
+Sector <- c('Power','Power','Communications','Shipping','Shipping','Rail','Rail','Rail','Air','Air','Air','Shipping','Communications','Power','Power','Communications','Communications','Communications','Power','Power','Power')
+TechLevel <- c('Established','Established','Established','Established','Established','Established','Established','Established','Modern','Modern','Modern','Modern','Modern','Modern','Modern','Advanced','Advanced','Advanced','Advanced','Advanced','Advanced')
+
+kable(data.frame(Indicators,Sector,TechLevel))
+
+
+```
+
+The amount of aid for each of these sectors was calculated from the Creditor Reporting System (CRS) from the OECD's Development Assistance Committee (DAC) from 2004 to 2014. This dataset includes aid 90 recipient countries. For each of the five sectors relevant aid was selected from the DAC's list of purpose codes. This aid was also broken down by delivery actor type, including donor government, recipient government, NGO, IGO, and corporation. A other category was included to capture the effect of aid that was relevant for the purpse but was missing a specific delivery method code.
+
+The result was a recipient-year dataset with aid totals by delivery method and intended infrastructure sector. For each sector, a broad coding rule was applied to include support for policy development and training as well as the hard infrastructure crucial to that sector. For the power sector, mining efforts were excluded so that particular types of power generation were not biased.
+
+Each model was run with the same suite of controls including population, the urban to rural ratio, and the GDP of the recipient country. 
+
+
+##Crafting in Their Own Image
+
+The first figure simply shows the effect of all aid targeted at that sector in a given year. The most shocking result is that for many of them aid specific to that sector actually decreases indicators in that sector. Aid to communications signficantly decreases the number of broadband subscriptions in the country the following year. Similarly, aid to railways decreases the number of rail passengers. The amount of natural gas, however, is a percentage of total usage, meaning that the negative coefficient does not necessarily mean that the usage of natural gas but that it has decreased relative to the other sources of power. Noticably, this data suggests that aid to the air industry is incredibly effective on all available measures and that aid to power infrastrucutre is primarily manifested in renewable sources of power generation (not including hydroelectric) but also signficantly increases the percentage of the nation powered by coal. Communications aid improves the number of mobile cellular subscriptions but little else, including advanced technologies like the Internet and older technologies like landlines.
+
+The second figure breaks down the aid by the type of delivery mechanism, again using color to highlight the different levels of technology. This presentation includes considerable nuance that is lacking from the first figure, including many indicators that aid delivered by one type of actor increases but another decreases. For example, hydroelectric power, which was insiginficant in the first figure, is improved by corporations and slightly by recipient governments but decreased by IGOs and donor governments. Nuclear power is increased by donor governments and NGOs but decrased by corporations and IGOs, also leading to a insignficant finding in the first figure. 
+
+More importantly for our argument, donor governments decrease the levels of advanced technologies in sectors they try to aid for everything except nuclear power. Renewable and hydroelectric power, as well as any indicator for Internet and data infrastructure, is negative and significant. IGOs and NGOs are also negative or indeterminate for most of the advanced indicators. Corporations, however, are positive and signficant for most indicators except for nuclear power, suggesting they put extra emphasis on more advanced technologies when they deliver infrastructure aid. 
+
+For modern technologies, IGOs and corporations fail to significantly increase any indicator with aid to that type of sector. Aid through IGOs meant to help airports and air travel results in decreases in the number of flights and the number of air passengers the following year. While it is important to note that these indicators do not cover every aspect of the sector in question, such as the safety record of flights flying into and out of the country, the results still suggest that the aid is not successful in some of its primary goals. 
+
+Recpient governments, however, are very effective at delivering modern technologies when they are used to deliver the aid of donor countries. The increase every aspect of air travel as well as mobile cellular subscriptions and complex shipping operations. One possible reason for this that could be tested in a later project is that these are the services that will be most in demand by the upper classes, which have a greater ability to access incoming aid because of corruption.
+
+Finally, established technologies are increased most by donor governments and NGOs, especially for less complex shipping indicators like port traffic and infrastructure. expand...
+
+##Responding to Current Demand
+
+NGOs, however, are are rarely concerned with established technologies that are often bested by modern technologies in both performance and cost. As a result, they focus on improving these outcomes like mobile phone availability and air travel while ignoring fixed phone lines and railways. 
+
+##A Focus on the Future
+
+When recipient governments and corporations deliver the aid from donor countries, they both focus on the most advanced technologies possible, building secure servers for future content storage and high speed internet as well as investing in the best forms for transportation and shipping. These advanced technologies are rarely immediately useful to the country as a whole and may only benefit those in city centers. Corporations likely do this with a focus on the future when they will have first access into these sectors and can use it to develop others and expand a market for their goods. 
+
+Recipient governments could be doing it for various reasons, which include building a better future for the country even if it means sacrificing today, building the best infrastructure where they live with little concern for more rural areas, and constructing what they know corporations will be most interested in. 
+
+##Implications (change this title)
+
+While we have focused on the varying ways that different actors implement infrastructure aid in the research note, there is little reason to think that similar effects may not generalize to other cases. In the realm of military aid, this would be a critical security concern if states are only providing weaker allies with established military technologies instead of arming them with more effective modern or advanced weaponry. While NGOs do not exist for military aid, corporations do and may be suppling developing actors with much more advanced weaponry at the behest of Western states that those states themselves would not give them.
+
+Similarly, democratization aid has a large focus on increasing the availability and freedom of information in weak democracies, but from pre-existing literature (cite) we know that more advanced technologies have different effects, with some even aiding autocratic forces by making it easier to monitor populations. If these results generalize, then donors should be very concerned with which types of technologies their dollars fund.
+
+Infrastructure should also be a subject of interest in its own right...
+
+
+```{r, message = FALSE}
+#Importing channel codes
+modified_crs_channel_codes <- read_delim("new_channel_codes.csv",",", escape_double = FALSE, trim_ws = TRUE)
+
+#selecting and renaming as necessary
+channel_codes <- modified_crs_channel_codes %>%
+  select(`Channel ID`, ch_type,ch_identity) %>%
+  rename(code = `Channel ID`)
+rm(modified_crs_channel_codes)
+#turning into factors
+channel_codes$ch_type <- as.factor(channel_codes$ch_type)
+channel_codes$ch_identity <- as.factor(channel_codes$ch_identity)
+
+#Importing dem purpose codes. Right now these are the "loose" codings. More narrow options exist in dempurposecodes,csv
+dempurposecodes <- read_csv("airplanecode.csv")
+dempurposecodes <- dempurposecodes %>%
+  filter(dem_purpose==1)%>%
+  select(PurposeCode)
+```
+
+
+```{r}
+#This is a function that takes a by year crs_data set, a set of channel codes, and a set of dem purpose codes. It removes unneeded variables and filters out NAs. It then recodes projects with our channel codes which are broader than the original ones. It also gets rid of observations that are not in our set of dem_purpose codes. Finally it reshapes the data a bit to poop out a data frame with observations that are RECIPIENT-YEAR. Variables include the total amount of aid overall and by each channel type. Percentages are also caculated by each channel type.
+
+crs_reshape_dy <- function(crs_data, ch_codes, dempurposecodes){
+  
+  #This chunk selects necessary variables (donor,recipient, channel, purpose and disbursement) and filters
+  #out unwanted donors, recipients and obs with missing channel codes.
+  crs_data <- crs_data %>%
+    select(Year,RecipientCode,RecipientName,DonorCode,DonorName,
+           usd_disbursement,ChannelCode,PurposeCode) %>%
+    na.omit() %>%
+    filter(!(RecipientCode %in% c(88,89,189,289,489,689,389,380,298,619,798,889,789,679,498,9998,589))) %>%
+    filter(PurposeCode %in% dempurposecodes$PurposeCode) %>%
+    filter(!is.na(ChannelCode))
+  #merge with channelcodes
+  crs_data <- merge(crs_data, channel_codes, by.x = 'ChannelCode', by.y = 'code', all.x = TRUE)
+  #counts and aid totals for all types
+  crs_data <- crs_data %>%
+    group_by(Year,RecipientCode) %>%
+    add_count(sort = TRUE) %>%
+    mutate(total_disbursement = sum(usd_disbursement, na.rm = TRUE)) %>%
+    ungroup()
+  
+  crs_data$ch_type2 = ifelse(crs_data$ch_type == 'government'&crs_data$ch_identity == 'donor','government_donor', ifelse(crs_data$ch_type == 'government'&crs_data$ch_identity == 'recipient','government_recipient', ifelse(crs_data$ch_type == 'government'&(crs_data$ch_identity == 'other'|crs_data$ch_identity == 'thirdparty'),'government_other',ifelse(crs_data$ch_type == 'publicprivate'|crs_data$ch_type == 'corporation','corporation',ifelse(crs_data$ch_type == 'network'|crs_data$ch_type == 'edu'|crs_data$ch_type=='ngo','ngo', ifelse(crs_data$ch_type == 'igo', 'igo', ifelse(crs_data$ch_type == 'other', 'other',crs_data$ch_type)))))))
+  crs_data$ch_type <- crs_data$ch_type2
+  
+  #This giant block splits it up by type and subtype-identity. 
+  crs_data2 <- crs_data %>%
+    group_by(Year,RecipientCode,ch_type) %>%
+    mutate(
+      gov_d_total = ifelse(ch_type == 'government_donor',sum(usd_disbursement,na.rm = TRUE),0),
+      gov_r_total = ifelse(ch_type == 'government_recipient',sum(usd_disbursement,na.rm = TRUE),0),
+      gov_o_total = ifelse(ch_type == 'government_other',sum(usd_disbursement,na.rm = TRUE),0),
+      gov_total = ifelse(ch_type == 'government',sum(usd_disbursement, na.rm = TRUE),0),
+      corp_total = ifelse(ch_type == 'corporation',sum(usd_disbursement,na.rm = TRUE),0),
+      ngo_total = ifelse(ch_type == 'ngo',sum(usd_disbursement,na.rm = TRUE),0),
+      igo_total = ifelse(ch_type == 'igo',sum(usd_disbursement,na.rm = TRUE),0),
+      other_total = ifelse(ch_type == 'other',sum(usd_disbursement,na.rm = TRUE),0)
+    ) %>%
+    ungroup() %>%
+    group_by(Year,RecipientCode) %>%
+    select(Year,RecipientCode,RecipientName,n,total_disbursement,gov_total,gov_d_total,gov_r_total,gov_o_total,corp_total,ngo_total,igo_total,other_total,usd_disbursement) %>%
+    mutate(
+      gov_d_total = max(round(gov_d_total,6), na.rm = TRUE),
+      gov_r_total = max(round(gov_r_total,6), na.rm = TRUE),
+      gov_o_total = max(round(gov_o_total,6), na.rm = TRUE),
+      gov_total = max(round(gov_d_total+gov_r_total+gov_o_total,6), na.rm = TRUE),
+      corp_total = max(round(corp_total,6), na.rm = TRUE),
+      ngo_total = max(round(ngo_total,6), na.rm = TRUE),
+      igo_total = max(round(igo_total,6), na.rm = TRUE),
+      other_total = max(round(other_total,6), na.rm = TRUE)
+    ) %>%
+    unique() %>%
+    ungroup() 
+  #Return the data frame.
+  crs_data2
+}
+```
+
+```{r, message=FALSE}
+#This chunk imports and merges all of the yearly CRS data according to the above function.
+#vector of the file name years. Early ones are grouped together. 1973-94 is omitted as it serves as the base case below.
+years <- c('1995-99','2000-01','2002-03','2004-05','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016')
+
+#importing and running crs_by_types on the base case
+load(file = './CRS 1973-94 data.RData')
+crs_by_types <- crs_reshape_dy(crs_tmp,channel_codes,dempurposecodes)
+
+#importing, reshaping and appending each of the CRS data files.
+for (i in years){
+  filepath = paste0('./CRS ',i,' data.RData')
+  load(file = filepath)
+  tmp_df <- crs_reshape_dy(crs_tmp, channel_codes,dempurposecodes)
+  crs_by_types <- rbind(crs_by_types, tmp_df)
+}
+
+```
+
+
+```{r}
+crs_by_types$RecipientName <- ifelse(crs_by_types$RecipientCode == 247, 'Cote dIvoire',crs_by_types$RecipientName)
+crs_by_types$new.code <- countrycode(crs_by_types$RecipientName, origin = 'country.name', destination = 'iso3n')
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 247, 384, crs_by_types$new.code) #Cote d'Ivoire
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 860, 583, crs_by_types$new.code) #Federated States of Micronesia
+#crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 63, 345, crs_by_types$new.code) #Serbia
+
+working <- crs_by_types %>%
+  filter(!is.na(Year)&!is.na(new.code)) %>%
+  filter(!is.infinite(ngo_total)|!is.infinite(gov_d_total)|!is.infinite(gov_r_total)|!is.infinite(gov_o_total)|!is.infinite(corp_total)|!is.infinite(igo_total)|!is.infinite(other_total))
+
+working$lead_year <- working$Year + 1
+
+air <- wb(country = 'all', indicator = 'IS.AIR.DPRT', startdate = '2003', enddate = '2018') %>%
+  rename(air_traffic = value, year = date) %>%
+  select(iso3c, year, air_traffic)
+
+air2 <- wb(country = 'all', indicator = 'IS.AIR.PSGR', startdate = '2003', enddate = '2018') %>%
+  rename(air_passengers = value, year = date) %>%
+  select(iso3c, year, air_passengers)
+
+air3 <- wb(country = 'all', indicator = 'IS.AIR.GOOD.MT.K1', startdate = '2003', enddate = '2018') %>%
+  rename(air_freight = value, year = date) %>%
+  select(iso3c, year, air_freight)
+
+
+
+##Pulling in some basic controls from the World Bank
+gdp <- wb(country = 'all', indicator = 'NY.GDP.PCAP.CD', startdate = '2003', enddate = '2018') %>%
+  rename(gdp = value, year = date) %>%
+  select(iso3c, year, gdp, country)
+urban <- wb(country = 'all', indicator = 'SP.URB.TOTL.IN.ZS', startdate = '2003', enddate = '2018') %>%
+  rename(urban = value, year = date) %>%
+  select(iso3c,year,urban)
+pop <- wb(country = 'all', indicator = 'SP.POP.TOTL', startdate = '2003', enddate = '2018') %>%
+  rename(pop = value, year = date) %>%
+  select(iso3c,year,pop)
+controls <- merge(air,air2, by = c('iso3c','year'))
+controls <- merge(controls,air3, by = c('iso3c','year'))
+controls <- merge(controls,gdp, by = c('iso3c','year'))
+controls <- merge(controls,urban, by = c('iso3c','year'))
+controls <- merge(controls,pop, by = c('iso3c','year'))
+
+
+controls$new.code <- countrycode(controls$iso3c, origin = 'iso3c', destination = 'iso3n')
+controls$new.code <- ifelse(controls$iso3c == 'SRB',345,controls$new.code)
+#Note: All missingness from this command is fine. It is the wb grouped categories (e.g. 'world') and can be dropped.
+
+controls <- controls %>%
+  select(new.code,year,gdp,urban,pop, air_traffic, air_passengers, air_freight)
+
+working <- merge(working, controls, by.x = c('lead_year','new.code'), by.y = c('year','new.code'), all.x = TRUE)
+
+working <- working %>%
+  filter(!is.na(RecipientName)) #If everythikng is done correctly, this should remove no obs.
+```
+
+
+```{r, message=FALSE, results='asis', warning=FALSE}
+
+working <- working %>%
+  filter(!is.na(gov_d_total)&!is.na(gov_r_total)&!is.na(gov_o_total)&!is.na(other_total)&!is.na(ngo_total)&!is.na(igo_total)&!is.na(corp_total)&!is.na(gdp)&!is.na(urban)&!is.na(pop)&!is.na(other_total)&!is.na(air_traffic)&!is.na(RecipientName))
+
+library(robustHD)
+
+working$all_total <- log(working$other_total + working$gov_d_total + working$gov_o_total + working$gov_r_total + working$ngo_total + working$igo_total + working$corp_total +1)
+
+working$other_total <- log(working$other_total+working$gov_o_total+1)
+working$gov_d_total <- log(working$gov_d_total+1)
+working$gov_r_total <- log(working$gov_r_total+1)
+working$gov_o_total <- log(working$gov_o_total+1)
+working$ngo_total <- log(working$ngo_total+1)
+working$igo_total <- log(working$igo_total+1)
+working$corp_total <- log(working$corp_total+1)
+
+ind.vars.total <- c('gov_d_total','gov_r_total','ngo_total','igo_total','corp_total','other_total')
+
+ind.vars.total.controlled <- c('gov_d_total','gov_r_total','ngo_total','igo_total','corp_total','other_total','log(gdp)','urban','log(pop)')
+
+working$log_air_traffic <- standardize(log(working$air_traffic+1))
+working$log_air_passengers <- standardize(log(working$air_passengers+1))
+working$log_air_freight <- standardize(log(working$air_freight+1))
+
+
+
+mod.air.1 <- plm(log_air_traffic ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.air.2 <- plm(log_air_passengers ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.air.3 <- plm(log_air_freight ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+
+mod.air.4 <- plm(as.formula(paste('log_air_traffic', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.air.5 <- plm(as.formula(paste('log_air_passengers', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.air.6 <- plm(as.formula(paste('log_air_freight', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+
+
+#stargazer(mod.1,mod.2,mod.3, colnames = FALSE, title = 'Impact of Aid on Air Travel', model.numbers = FALSE, dep.var.labels = c('Air Traffic','Air Passengers','Air Freight'), font.size = 'small', column.sep.width = '1pt', header = FALSE)
+#stargazer(mod.4,mod.5,mod.6, colnames = FALSE, title = 'Impact of Aid on Air Travel by Delivery Channel', model.numbers = FALSE, dep.var.labels = c('Air Traffic','Air Passengers','Air Freight'), font.size = 'small', column.sep.width = '1pt', header = FALSE)
+```
+
+
+```{r, message = FALSE}
+#Importing channel codes
+modified_crs_channel_codes <- read_delim("new_channel_codes.csv",",", escape_double = FALSE, trim_ws = TRUE)
+
+#selecting and renaming as necessary
+channel_codes <- modified_crs_channel_codes %>%
+  select(`Channel ID`, ch_type,ch_identity) %>%
+  rename(code = `Channel ID`)
+rm(modified_crs_channel_codes)
+#turning into factors
+channel_codes$ch_type <- as.factor(channel_codes$ch_type)
+channel_codes$ch_identity <- as.factor(channel_codes$ch_identity)
+
+#Importing dem purpose codes. Right now these are the "loose" codings. More narrow options exist in dempurposecodes,csv
+dempurposecodes <- read_csv("railcode.csv")
+dempurposecodes <- dempurposecodes %>%
+  filter(dem_purpose==1)%>%
+  select(PurposeCode)
+```
+
+
+```{r, message=FALSE}
+#This chunk imports and merges all of the yearly CRS data according to the above function.
+#vector of the file name years. Early ones are grouped together. 1973-94 is omitted as it serves as the base case below.
+years <- c('1995-99','2000-01','2002-03','2004-05','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016')
+
+#importing and running crs_by_types on the base case
+load(file = './CRS 1973-94 data.RData')
+crs_by_types <- crs_reshape_dy(crs_tmp,channel_codes,dempurposecodes)
+
+#importing, reshaping and appending each of the CRS data files.
+for (i in years){
+  filepath = paste0('./CRS ',i,' data.RData')
+  load(file = filepath)
+  tmp_df <- crs_reshape_dy(crs_tmp, channel_codes,dempurposecodes)
+  crs_by_types <- rbind(crs_by_types, tmp_df)
+}
+
+```
+
+
+```{r}
+crs_by_types$RecipientName <- ifelse(crs_by_types$RecipientCode == 247, 'Cote dIvoire',crs_by_types$RecipientName)
+crs_by_types$new.code <- countrycode(crs_by_types$RecipientName, origin = 'country.name', destination = 'iso3n')
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 247, 384, crs_by_types$new.code) #Cote d'Ivoire
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 860, 583, crs_by_types$new.code) #Federated States of Micronesia
+#crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 63, 345, crs_by_types$new.code) #Serbia
+
+working <- crs_by_types %>%
+  filter(!is.na(Year)&!is.na(new.code)) %>%
+  filter(!is.infinite(ngo_total)|!is.infinite(gov_d_total)|!is.infinite(gov_r_total)|!is.infinite(gov_o_total)|!is.infinite(corp_total)|!is.infinite(igo_total)|!is.infinite(other_total))
+
+working$lead_year <- working$Year + 1
+
+rail <- wb(country = 'all', indicator = 'IS.RRS.PASG.KM', startdate = '2003', enddate = '2018') %>%
+  rename(rail_passenger = value, year = date) %>%
+  select(iso3c, year, rail_passenger)
+
+rail2 <- wb(country = 'all', indicator = 'IS.RRS.GOOD.MT.K6', startdate = '2003', enddate = '2018') %>%
+  rename(rail_freight = value, year = date) %>%
+  select(iso3c, year, rail_freight)
+
+rail3 <- wb(country = 'all', indicator = 'IS.RRS.TOTL.KM', startdate = '2003', enddate = '2018') %>%
+  rename(rail_total = value, year = date) %>%
+  select(iso3c, year, rail_total)
+
+
+
+controls <- merge(rail,rail2, by = c('iso3c','year'))
+controls <- merge(controls,rail3, by = c('iso3c','year'))
+controls <- merge(controls,gdp, by = c('iso3c','year'))
+controls <- merge(controls,urban, by = c('iso3c','year'))
+controls <- merge(controls,pop, by = c('iso3c','year'))
+
+
+controls$new.code <- countrycode(controls$iso3c, origin = 'iso3c', destination = 'iso3n')
+controls$new.code <- ifelse(controls$iso3c == 'SRB',345,controls$new.code)
+#Note: All missingness from this command is fine. It is the wb grouped categories (e.g. 'world') and can be dropped.
+
+controls <- controls %>%
+  select(new.code,year,gdp,urban,pop, rail_passenger, rail_total, rail_freight)
+
+working <- merge(working, controls, by.x = c('lead_year','new.code'), by.y = c('year','new.code'), all.x = TRUE)
+
+working <- working %>%
+  filter(!is.na(RecipientName)) #If everythikng is done correctly, this should remove no obs.
+```
+
+
+```{r, message=FALSE, results='asis', warning=FALSE}
+
+working <- working %>%
+  filter(!is.na(gov_d_total)&!is.na(gov_r_total)&!is.na(gov_o_total)&!is.na(other_total)&!is.na(ngo_total)&!is.na(igo_total)&!is.na(corp_total)&!is.na(gdp)&!is.na(urban)&!is.na(pop)&!is.na(other_total)&!is.na(rail_total)&!is.na(RecipientName))
+
+library(robustHD)
+
+working$all_total <- log(working$other_total + working$gov_d_total + working$gov_o_total + working$gov_r_total + working$ngo_total + working$igo_total + working$corp_total +1)
+
+working$other_total <- log(working$other_total+working$gov_o_total+1)
+working$gov_d_total <- log(working$gov_d_total+1)
+working$gov_r_total <- log(working$gov_r_total+1)
+working$gov_o_total <- log(working$gov_o_total+1)
+working$ngo_total <- log(working$ngo_total+1)
+working$igo_total <- log(working$igo_total+1)
+working$corp_total <- log(working$corp_total+1)
+
+ind.vars.total <- c('gov_d_total','gov_r_total','ngo_total','igo_total','corp_total','other_total')
+
+ind.vars.total.controlled <- c('gov_d_total','gov_r_total','ngo_total','igo_total','corp_total','other_total','log(gdp)','urban','log(pop)')
+
+working$log_rail_total <- standardize(log(working$rail_total +1))
+working$log_rail_passengers <- standardize(log(working$rail_passenger+1))
+working$log_rail_freight <- standardize(log(working$rail_freight+1))
+
+
+
+mod.rail.1 <- plm(as.formula(paste('log_rail_total', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.rail.2 <- plm(as.formula(paste('log_rail_passengers', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.rail.3 <- plm(as.formula(paste('log_rail_freight', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+
+
+mod.rail.4 <- plm(log_rail_total ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.rail.5 <- plm(log_rail_passengers ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.rail.6 <- plm(log_rail_freight ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+
+
+#stargazer(mod.4,mod.5,mod.6, colnames = FALSE, title = 'Impact of Railway Aid', dep.var.labels = c('Total Railway Lines','Railway Passengers','Railway Freight'), font.size = 'small', column.sep.width = '1pt', header = FALSE)
+
+#stargazer(mod.1,mod.2,mod.3, colnames = FALSE, title = 'Impact of Railway Aid by Delivery Channel', dep.var.labels = c('Total Railway Lines','Railway Passengers','Railway Freight'), font.size = 'small', column.sep.width = '1pt', header = FALSE)
+
+```
+
+
+
+
+```{r, message = FALSE}
+#Importing channel codes
+modified_crs_channel_codes <- read_delim("new_channel_codes.csv",",", escape_double = FALSE, trim_ws = TRUE)
+
+#selecting and renaming as necessary
+channel_codes <- modified_crs_channel_codes %>%
+  select(`Channel ID`, ch_type,ch_identity) %>%
+  rename(code = `Channel ID`)
+rm(modified_crs_channel_codes)
+#turning into factors
+channel_codes$ch_type <- as.factor(channel_codes$ch_type)
+channel_codes$ch_identity <- as.factor(channel_codes$ch_identity)
+
+#Importing dem purpose codes. Right now these are the "loose" codings. More narrow options exist in dempurposecodes,csv
+dempurposecodes <- read_csv("watercode.csv")
+dempurposecodes <- dempurposecodes %>%
+  filter(dem_purpose==1)%>%
+  select(PurposeCode)
+```
+
+
+```{r, message=FALSE}
+#This chunk imports and merges all of the yearly CRS data according to the above function.
+#vector of the file name years. Early ones are grouped together. 1973-94 is omitted as it serves as the base case below.
+years <- c('1995-99','2000-01','2002-03','2004-05','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016')
+
+#importing and running crs_by_types on the base case
+load(file = './CRS 1973-94 data.RData')
+crs_by_types <- crs_reshape_dy(crs_tmp,channel_codes,dempurposecodes)
+
+#importing, reshaping and appending each of the CRS data files.
+for (i in years){
+  filepath = paste0('./CRS ',i,' data.RData')
+  load(file = filepath)
+  tmp_df <- crs_reshape_dy(crs_tmp, channel_codes,dempurposecodes)
+  crs_by_types <- rbind(crs_by_types, tmp_df)
+}
+
+```
+
+
+```{r}
+crs_by_types$RecipientName <- ifelse(crs_by_types$RecipientCode == 247, 'Cote dIvoire',crs_by_types$RecipientName)
+crs_by_types$new.code <- countrycode(crs_by_types$RecipientName, origin = 'country.name', destination = 'iso3n')
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 247, 384, crs_by_types$new.code) #Cote d'Ivoire
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 860, 583, crs_by_types$new.code) #Federated States of Micronesia
+#crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 63, 345, crs_by_types$new.code) #Serbia
+
+working <- crs_by_types %>%
+  filter(!is.na(Year)&!is.na(new.code)) %>%
+  filter(!is.infinite(ngo_total)|!is.infinite(gov_d_total)|!is.infinite(gov_r_total)|!is.infinite(gov_o_total)|!is.infinite(corp_total)|!is.infinite(igo_total)|!is.infinite(other_total))
+
+working$lead_year <- working$Year + 1
+
+water <- wb(country = 'all', indicator = 'IS.SHP.GOOD.TU', startdate = '2003', enddate = '2018') %>%
+  rename(port_traffic = value, year = date) %>%
+  select(iso3c, year, port_traffic)
+
+water2 <- wb(country = 'all', indicator = 'IS.SHP.GCNW.XQ', startdate = '2003', enddate = '2018') %>%
+  rename(liner_index = value, year = date) %>%
+  select(iso3c, year, liner_index)
+
+water3 <- wb(country = 'all', indicator = 'IQ.WEF.PORT.XQ', startdate = '2003', enddate = '2018') %>%
+  rename(port_infrastructure = value, year = date) %>%
+  select(iso3c, year, port_infrastructure)
+
+
+
+##Pulling in some basic controls from the World Bank
+controls <- merge(water,water2, by = c('iso3c','year'))
+controls <- merge(controls,water3, by = c('iso3c','year'))
+controls <- merge(controls,gdp, by = c('iso3c','year'))
+controls <- merge(controls,urban, by = c('iso3c','year'))
+controls <- merge(controls,pop, by = c('iso3c','year'))
+
+
+controls$new.code <- countrycode(controls$iso3c, origin = 'iso3c', destination = 'iso3n')
+controls$new.code <- ifelse(controls$iso3c == 'SRB',345,controls$new.code)
+#Note: All missingness from this command is fine. It is the wb grouped categories (e.g. 'world') and can be dropped.
+
+controls <- controls %>%
+  select(new.code,year,gdp,urban,pop, port_traffic, liner_index, port_infrastructure)
+
+working <- merge(working, controls, by.x = c('lead_year','new.code'), by.y = c('year','new.code'), all.x = TRUE)
+
+working <- working %>%
+  filter(!is.na(RecipientName)) #If everythikng is done correctly, this should remove no obs.
+```
+
+
+```{r, message=FALSE, results='asis', warning=FALSE}
+
+working <- working %>%
+  filter(!is.na(gov_d_total)&!is.na(gov_r_total)&!is.na(gov_o_total)&!is.na(other_total)&!is.na(ngo_total)&!is.na(igo_total)&!is.na(corp_total)&!is.na(gdp)&!is.na(urban)&!is.na(pop)&!is.na(other_total)&!is.na(port_traffic)&!is.na(RecipientName))
+
+library(robustHD)
+
+working$all_total <- log(working$other_total + working$gov_d_total + working$gov_o_total + working$gov_r_total + working$ngo_total + working$igo_total + working$corp_total +1)
+
+working$other_total <- log(working$other_total+working$gov_o_total+1)
+working$gov_d_total <- log(working$gov_d_total+1)
+working$gov_r_total <- log(working$gov_r_total+1)
+working$gov_o_total <- log(working$gov_o_total+1)
+working$ngo_total <- log(working$ngo_total+1)
+working$igo_total <- log(working$igo_total+1)
+working$corp_total <- log(working$corp_total+1)
+
+ind.vars.total <- c('gov_d_total','gov_r_total','ngo_total','igo_total','corp_total','other_total')
+
+ind.vars.total.controlled <- c('gov_d_total','gov_r_total','ngo_total','igo_total','corp_total','other_total','log(gdp)','urban','log(pop)')
+
+working$log_port_traffic <- standardize(log(working$port_traffic+1))
+working$liner_index <- standardize(working$liner_index)
+working$port_infrastructure <- standardize(working$port_infrastructure)
+
+
+mod.water.1 <- plm(log_port_traffic ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.water.2 <- plm(liner_index ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.water.3 <- plm(port_infrastructure ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+
+mod.water.4 <- plm(as.formula(paste('log_port_traffic', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.water.5 <- plm(as.formula(paste('liner_index', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.water.6 <- plm(as.formula(paste('port_infrastructure', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+
+#stargazer(mod.1,mod.2,mod.3, colnames = FALSE, title = 'Impact of Port and Shipping Aid', model.numbers = FALSE, dep.var.labels = c('Port Traffic','Liner Index','Port Infrastructure'), font.size = 'small', column.sep.width = '1pt', header = FALSE)
+
+#stargazer(mod.4,mod.5,mod.6, colnames = FALSE, title = 'Impact of Port and Shipping Aid by Delivery Channel', model.numbers = FALSE, dep.var.labels = c('Port Traffic','Liner Index','Port Infrastructure'), font.size = 'small', column.sep.width = '1pt', header = FALSE)
+```
+
+
+```{r, message = FALSE}
+#Importing channel codes
+modified_crs_channel_codes <- read_delim("new_channel_codes.csv",",", escape_double = FALSE, trim_ws = TRUE)
+
+#selecting and renaming as necessary
+channel_codes <- modified_crs_channel_codes %>%
+  select(`Channel ID`, ch_type,ch_identity) %>%
+  rename(code = `Channel ID`)
+rm(modified_crs_channel_codes)
+#turning into factors
+channel_codes$ch_type <- as.factor(channel_codes$ch_type)
+channel_codes$ch_identity <- as.factor(channel_codes$ch_identity)
+
+#Importing dem purpose codes. Right now these are the "loose" codings. More narrow options exist in dempurposecodes,csv
+dempurposecodes <- read_csv("telecode.csv")
+dempurposecodes <- dempurposecodes %>%
+  filter(dem_purpose==1)%>%
+  select(PurposeCode)
+```
+
+
+```{r, message=FALSE}
+#This chunk imports and merges all of the yearly CRS data according to the above function.
+#vector of the file name years. Early ones are grouped together. 1973-94 is omitted as it serves as the base case below.
+years <- c('1995-99','2000-01','2002-03','2004-05','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016')
+
+#importing and running crs_by_types on the base case
+load(file = './CRS 1973-94 data.RData')
+crs_by_types <- crs_reshape_dy(crs_tmp,channel_codes,dempurposecodes)
+
+#importing, reshaping and appending each of the CRS data files.
+for (i in years){
+  filepath = paste0('./CRS ',i,' data.RData')
+  load(file = filepath)
+  tmp_df <- crs_reshape_dy(crs_tmp, channel_codes,dempurposecodes)
+  crs_by_types <- rbind(crs_by_types, tmp_df)
+}
+
+```
+
+
+```{r}
+crs_by_types$RecipientName <- ifelse(crs_by_types$RecipientCode == 247, 'Cote dIvoire',crs_by_types$RecipientName)
+crs_by_types$new.code <- countrycode(crs_by_types$RecipientName, origin = 'country.name', destination = 'iso3n')
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 247, 384, crs_by_types$new.code) #Cote d'Ivoire
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 860, 583, crs_by_types$new.code) #Federated States of Micronesia
+#crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 63, 345, crs_by_types$new.code) #Serbia
+
+working <- crs_by_types %>%
+  filter(!is.na(Year)&!is.na(new.code)) %>%
+  filter(!is.infinite(ngo_total)|!is.infinite(gov_d_total)|!is.infinite(gov_r_total)|!is.infinite(gov_o_total)|!is.infinite(corp_total)|!is.infinite(igo_total)|!is.infinite(other_total))
+
+working$lead_year <- working$Year + 1
+
+tele <- wb(country = 'all', indicator = 'IT.NET.BBND', startdate = '2003', enddate = '2018') %>%
+  rename(fixed_broadband = value, year = date) %>%
+  select(iso3c, year, fixed_broadband)
+
+tele2 <- wb(country = 'all', indicator = 'IT.MLT.MAIN', startdate = '2003', enddate = '2018') %>%
+  rename(fixed_phone = value, year = date) %>%
+  select(iso3c, year, fixed_phone)
+
+tele3 <- wb(country = 'all', indicator = 'IT.NET.USER.ZS', startdate = '2003', enddate = '2018') %>%
+  rename(internet = value, year = date) %>%
+  select(iso3c, year, internet)
+
+tele4 <- wb(country = 'all', indicator = 'IT.CEL.SETS', startdate = '2003', enddate = '2018') %>%
+  rename(mobile_phone = value, year = date) %>%
+  select(iso3c, year, mobile_phone)
+
+tele5 <- wb(country = 'all', indicator = 'IT.NET.SECR', startdate = '2003', enddate = '2018') %>%
+  rename(secure_servers = value, year = date) %>%
+  select(iso3c, year, secure_servers)
+
+
+
+##Pulling in some basic controls from the World Bank
+controls <- merge(tele,tele2, by = c('iso3c','year'))
+controls <- merge(controls,tele3, by = c('iso3c','year'))
+controls <- merge(controls,tele4, by = c('iso3c','year'))
+controls <- merge(controls,tele5, by = c('iso3c','year'))
+controls <- merge(controls,gdp, by = c('iso3c','year'))
+controls <- merge(controls,urban, by = c('iso3c','year'))
+controls <- merge(controls,pop, by = c('iso3c','year'))
+
+
+controls$new.code <- countrycode(controls$iso3c, origin = 'iso3c', destination = 'iso3n')
+controls$new.code <- ifelse(controls$iso3c == 'SRB',345,controls$new.code)
+#Note: All missingness from this command is fine. It is the wb grouped categories (e.g. 'world') and can be dropped.
+
+controls <- controls %>%
+  select(new.code,year,gdp,urban,pop, fixed_broadband, fixed_phone, mobile_phone,internet,secure_servers)
+
+working <- merge(working, controls, by.x = c('lead_year','new.code'), by.y = c('year','new.code'), all.x = TRUE)
+
+working <- working %>%
+  filter(!is.na(RecipientName)) #If everythikng is done correctly, this should remove no obs.
+```
+
+
+```{r, message=FALSE, results='asis', warning=FALSE}
+
+working <- working %>%
+  filter(!is.na(gov_d_total)&!is.na(gov_r_total)&!is.na(gov_o_total)&!is.na(other_total)&!is.na(ngo_total)&!is.na(igo_total)&!is.na(corp_total)&!is.na(gdp)&!is.na(urban)&!is.na(pop)&!is.na(other_total)&!is.na(fixed_phone)&!is.na(RecipientName))
+
+library(robustHD)
+
+working$all_total <- log(working$other_total + working$gov_d_total + working$gov_o_total + working$gov_r_total + working$ngo_total + working$igo_total + working$corp_total +1)
+
+working$other_total <- log(working$other_total+working$gov_o_total+1)
+working$gov_d_total <- log(working$gov_d_total+1)
+working$gov_r_total <- log(working$gov_r_total+1)
+working$gov_o_total <- log(working$gov_o_total+1)
+working$ngo_total <- log(working$ngo_total+1)
+working$igo_total <- log(working$igo_total+1)
+working$corp_total <- log(working$corp_total+1)
+
+ind.vars.total <- c('gov_d_total','gov_r_total','ngo_total','igo_total','corp_total','other_total')
+
+ind.vars.total.controlled <- c('gov_d_total','gov_r_total','ngo_total','igo_total','corp_total','other_total','log(gdp)','urban','log(pop)')
+
+working$log_secure_servers <- standardize(log(working$secure_servers+1))
+working$log_fixed_phone <- standardize(log(working$fixed_phone+1))
+working$log_fixed_broadband <- standardize(log(working$fixed_broadband+1))
+working$log_mobile_phone <- standardize(log(working$mobile_phone+1))
+working$internet <- standardize(working$internet)
+
+
+mod.tele.1 <- plm(log_fixed_phone ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.tele.2 <- plm(log_mobile_phone ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.tele.3 <- plm(log_fixed_broadband ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.tele.4 <- plm(internet ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.tele.5 <- plm(log_secure_servers ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+
+
+mod.tele.6 <- plm(as.formula(paste('log_fixed_phone', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.tele.7 <- plm(as.formula(paste('log_mobile_phone', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.tele.8 <- plm(as.formula(paste('log_fixed_broadband', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.tele.9 <- plm(as.formula(paste('internet', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.tele.10 <- plm(as.formula(paste('log_secure_servers', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+
+#stargazer(mod.1,mod.2,mod.3,mod.4,mod.5, colnames = FALSE, title = 'Impact of All Communications Aid', model.numbers = FALSE, dep.var.labels = c('fixed phone','mobile phone','fixed broadband','percent internet users','secure servers'), font.size = 'small', column.sep.width = '1pt', header = FALSE)
+
+#stargazer(mod.6,mod.7,mod.8,mod.9,mod.10, colnames = FALSE, title = 'Impact of All Communications Aid by Delivery Channel', model.numbers = FALSE, dep.var.labels = c('fixed phone','mobile phone','fixed broadband','percent internet users','secure servers'), font.size = 'small', column.sep.width = '1pt', header = FALSE)
+```
+
+
+```{r, message = FALSE}
+#Importing channel codes
+modified_crs_channel_codes <- read_delim("new_channel_codes.csv",",", escape_double = FALSE, trim_ws = TRUE)
+
+#selecting and renaming as necessary
+channel_codes <- modified_crs_channel_codes %>%
+  select(`Channel ID`, ch_type,ch_identity) %>%
+  rename(code = `Channel ID`)
+rm(modified_crs_channel_codes)
+#turning into factors
+channel_codes$ch_type <- as.factor(channel_codes$ch_type)
+channel_codes$ch_identity <- as.factor(channel_codes$ch_identity)
+
+#Importing dem purpose codes. Right now these are the "loose" codings. More narrow options exist in dempurposecodes,csv
+dempurposecodes <- read_csv("powercode.csv")
+dempurposecodes <- dempurposecodes %>%
+  filter(dem_purpose==1)%>%
+  select(PurposeCode)
+```
+
+
+```{r, message=FALSE}
+#This chunk imports and merges all of the yearly CRS data according to the above function.
+#vector of the file name years. Early ones are grouped together. 1973-94 is omitted as it serves as the base case below.
+years <- c('1995-99','2000-01','2002-03','2004-05','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016')
+
+#importing and running crs_by_types on the base case
+load(file = './CRS 1973-94 data.RData')
+crs_by_types <- crs_reshape_dy(crs_tmp,channel_codes,dempurposecodes)
+
+#importing, reshaping and appending each of the CRS data files.
+for (i in years){
+  filepath = paste0('./CRS ',i,' data.RData')
+  load(file = filepath)
+  tmp_df <- crs_reshape_dy(crs_tmp, channel_codes,dempurposecodes)
+  crs_by_types <- rbind(crs_by_types, tmp_df)
+}
+
+```
+
+
+```{r}
+crs_by_types$RecipientName <- ifelse(crs_by_types$RecipientCode == 247, 'Cote dIvoire',crs_by_types$RecipientName)
+crs_by_types$new.code <- countrycode(crs_by_types$RecipientName, origin = 'country.name', destination = 'iso3n')
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 247, 384, crs_by_types$new.code) #Cote d'Ivoire
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 860, 583, crs_by_types$new.code) #Federated States of Micronesia
+#crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 63, 345, crs_by_types$new.code) #Serbia
+
+working <- crs_by_types %>%
+  filter(!is.na(Year)&!is.na(new.code)) %>%
+  filter(!is.infinite(ngo_total)|!is.infinite(gov_d_total)|!is.infinite(gov_r_total)|!is.infinite(gov_o_total)|!is.infinite(corp_total)|!is.infinite(igo_total)|!is.infinite(other_total))
+
+working$lead_year <- working$Year + 1
+
+power <- wb(country = 'all', indicator = 'EG.USE.COMM.FO.ZS', startdate = '2003', enddate = '2018') %>%
+  rename(fossil_fuel = value, year = date) %>%
+  select(iso3c, year, fossil_fuel)
+
+power2 <- wb(country = 'all', indicator = 'EG.ELC.NUCL.ZS', startdate = '2003', enddate = '2018') %>%
+  rename(nuclear = value, year = date) %>%
+  select(iso3c, year, nuclear)
+
+power3 <- wb(country = 'all', indicator = 'EG.ELC.COAL.ZS', startdate = '2003', enddate = '2018') %>%
+  rename(coal = value, year = date) %>%
+  select(iso3c, year, coal)
+
+power4 <- wb(country = 'all', indicator = 'EG.ELC.PETR.ZS', startdate = '2003', enddate = '2018') %>%
+  rename(oil = value, year = date) %>%
+  select(iso3c, year, oil)
+
+power5 <- wb(country = 'all', indicator = 'EG.ELC.HYRO.ZS', startdate = '2003', enddate = '2018') %>%
+  rename(hydro = value, year = date) %>%
+  select(iso3c, year, hydro)
+
+power6 <- wb(country = 'all', indicator = 'EG.ELC.NGAS.ZS', startdate = '2003', enddate = '2018') %>%
+  rename(natgas = value, year = date) %>%
+  select(iso3c, year, natgas)
+
+power7 <- wb(country = 'all', indicator = 'EG.ELC.RNWX.ZS', startdate = '2003', enddate = '2018') %>%
+  rename(renewable = value, year = date) %>%
+  select(iso3c, year, renewable)
+
+power8 <- wb(country = 'all', indicator = 'EG.ELC.ACCS.ZS', startdate = '2003', enddate = '2018') %>%
+  rename(all_power = value, year = date) %>%
+  select(iso3c, year, all_power)
+
+
+
+##Pulling in some basic controls from the World Bank
+controls <- merge(power,power2, by = c('iso3c','year'))
+controls <- merge(controls,power3, by = c('iso3c','year'))
+controls <- merge(controls,power4, by = c('iso3c','year'))
+controls <- merge(controls,power5, by = c('iso3c','year'))
+controls <- merge(controls,power6, by = c('iso3c','year'))
+controls <- merge(controls,power7, by = c('iso3c','year'))
+controls <- merge(controls,power8, by = c('iso3c','year'))
+controls <- merge(controls,gdp, by = c('iso3c','year'))
+controls <- merge(controls,urban, by = c('iso3c','year'))
+controls <- merge(controls,pop, by = c('iso3c','year'))
+
+
+controls$new.code <- countrycode(controls$iso3c, origin = 'iso3c', destination = 'iso3n')
+controls$new.code <- ifelse(controls$iso3c == 'SRB',345,controls$new.code)
+#Note: All missingness from this command is fine. It is the wb grouped categories (e.g. 'world') and can be dropped.
+
+controls <- controls %>%
+  select(new.code,year,gdp,urban,pop, fossil_fuel, nuclear, coal,oil,hydro,natgas,renewable,all_power)
+
+working <- merge(working, controls, by.x = c('lead_year','new.code'), by.y = c('year','new.code'), all.x = TRUE)
+
+working <- working %>%
+  filter(!is.na(RecipientName)) #If everythikng is done correctly, this should remove no obs.
+```
+
+
+```{r, message=FALSE, results='asis', warning=FALSE}
+
+working <- working %>%
+  filter(!is.na(gov_d_total)&!is.na(gov_r_total)&!is.na(gov_o_total)&!is.na(other_total)&!is.na(ngo_total)&!is.na(igo_total)&!is.na(corp_total)&!is.na(gdp)&!is.na(urban)&!is.na(pop)&!is.na(other_total)&!is.na(coal)&!is.na(RecipientName))
+
+library(robustHD)
+
+working$all_total <- log(working$other_total + working$gov_d_total + working$gov_o_total + working$gov_r_total + working$ngo_total + working$igo_total + working$corp_total +1)
+
+working$other_total <- log(working$other_total+working$gov_o_total+1)
+working$gov_d_total <- log(working$gov_d_total+1)
+working$gov_r_total <- log(working$gov_r_total+1)
+working$gov_o_total <- log(working$gov_o_total+1)
+working$ngo_total <- log(working$ngo_total+1)
+working$igo_total <- log(working$igo_total+1)
+working$corp_total <- log(working$corp_total+1)
+
+ind.vars.total <- c('gov_d_total','gov_r_total','ngo_total','igo_total','corp_total','other_total')
+
+ind.vars.total.controlled <- c('gov_d_total','gov_r_total','ngo_total','igo_total','corp_total','other_total','log(gdp)','urban','log(pop)')
+
+working$fossil_fuel <- standardize(working$fossil_fuel)
+working$coal <- standardize(working$coal)
+working$oil <- standardize(working$oil)
+working$nuclear <- standardize(working$nuclear)
+working$hydro <- standardize(working$hydro)
+working$natgas <- standardize(working$natgas)
+working$renewable <- standardize(working$renewable)
+working$all_power <- standardize(working$all_power)
+
+mod.power.1 <- plm(fossil_fuel ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.power.2 <- plm(coal ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.power.3 <- plm(oil ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.power.4 <- plm(nuclear ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.power.5 <- plm(hydro ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.power.6 <- plm(natgas ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.power.7 <- plm(renewable ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+mod.power.8 <- plm(all_power ~ all_total + log(gdp) + urban + log(pop), model = 'within', index = c('RecipientName'), data = working)
+
+
+
+mod.power.9 <- plm(as.formula(paste('fossil_fuel', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.power.10 <- plm(as.formula(paste('coal', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.power.11 <- plm(as.formula(paste('oil', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.power.12 <- plm(as.formula(paste('nuclear', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.power.13 <- plm(as.formula(paste('hydro', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.power.14 <- plm(as.formula(paste('natgas', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.power.15 <- plm(as.formula(paste('renewable', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+mod.power.16 <- plm(as.formula(paste('all_power', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('RecipientName'), data = working)
+
+#stargazer(mod.power.1,mod.power.2,mod.power.3,mod.power.4,mod.power.5,mod.power.6,mod.power.7,mod.power.8, colnames = FALSE, title = 'Impact of All Communications Aid', model.numbers = FALSE, dep.var.labels = c('fossil fuel','coal','oil','nuclear','hydro','natural gas','renewable','all'), font.size = 'small', column.sep.width = '1pt', header = FALSE, type = 'text')
+
+#stargazer(mod.power.9,mod.power.10,mod.power.11,mod.power.12,mod.power.13,mod.power.14,mod.power.15,mod.power.16, colnames = FALSE, title = 'Impact of All Communications Aid by Delivery Channel', model.numbers = FALSE, dep.var.labels = c('fossil fuel','coal','oil','nuclear','hydro','natural gas','renewable','all_power'), font.size = 'small', column.sep.width = '1pt', header = FALSE, type = 'text')
+```
+
+```{r}
+save.image(file = './infrastructure working Data.RData')
+```
+
+
+
+```{r}
+
+tidying_func <- function(model_results,cat, name){
+  temp_ci <- confint(model_results)
+  
+  cleaning <- model_results %>%
+    tidy() %>%
+    mutate(model = name,category = cat, conf_low = temp_ci[,1], conf_high = temp_ci[,2]) %>%
+    filter(term != "log(gdp)" & term != 'urban' & term != 'log(pop)' & term != 'other_total') 
+  cleaning
+}
+
+am1 <- tidying_func(mod.air.1, cat = 'Modern', name = 'Number of Flights')
+am2 <- tidying_func(mod.air.2, cat = 'Modern', name = 'Air Passengers')
+am3 <- tidying_func(mod.air.3, cat = 'Modern', name = 'Air Freight')
+air.mods <- rbind(am1,am2,am3)
+
+rm1 <- tidying_func(mod.rail.4, cat = 'Established', name = 'Rail Lines in Km')
+rm2 <- tidying_func(mod.rail.5, cat = 'Established', name = 'Rail Passengers')
+rm3 <- tidying_func(mod.rail.6, cat = 'Established', name = 'Rail Freight')
+rail.mods <- rbind(rm1,rm2,rm3)
+
+wm1 <- tidying_func(mod.water.1, cat = 'Established', name = 'Port Traffic')
+wm2 <- tidying_func(mod.water.2, cat = 'Modern', name = 'Liner Index')
+wm3 <- tidying_func(mod.water.3, cat = 'Established', name = 'Port Infrastructure')
+water.mods <- rbind(wm1,wm2,wm3)
+
+
+tm1 <- tidying_func(mod.tele.1, cat = 'Established', name = 'Fixed Phone Subscriptions')
+tm2 <- tidying_func(mod.tele.2, cat = 'Modern', name = 'Mobile Cellular Subscriptions')
+tm3 <- tidying_func(mod.tele.3, cat = 'Advanced', name = 'Broadband Subscriptions')
+tm4 <- tidying_func(mod.tele.4, cat = 'Advanced', name = '% Internet Users')
+tm5 <- tidying_func(mod.tele.5, cat = 'Advanced', name = 'Secure Servers')
+tele.mods <- rbind(tm1,tm2,tm3,tm4,tm5)
+
+pm1 <- tidying_func(mod.power.1, cat = 'Established', name = 'Fossil Fuels')
+pm2 <- tidying_func(mod.power.2, cat = 'Established', name = 'Coal')
+pm3 <- tidying_func(mod.power.3, cat = 'Modern', name = 'Oil')
+pm4 <- tidying_func(mod.power.4, cat = 'Advanced', name = 'Nuclear')
+pm5 <- tidying_func(mod.power.5, cat = 'Advanced', name = 'Hydro')
+pm6 <- tidying_func(mod.power.6, cat = 'Modern', name = 'Natural Gas')
+pm7 <- tidying_func(mod.power.7, cat = 'Advanced', name = 'Renewable (not Hydro)')
+pm8 <- tidying_func(mod.power.8, cat = 'Advanced', name = '% with Power')
+power.mods <- rbind(pm1,pm2,pm3,pm4,pm5,pm6,pm7)
+
+all.mods <- rbind(air.mods,rail.mods,water.mods,tele.mods,power.mods) %>%
+  dplyr::arrange(category)
+
+all.mods$category <- as.factor(all.mods$category)
+all.mods$model <- factor(all.mods$model, levels = c('Coal','Fossil Fuels', 'Fixed Phone Subscriptions', 'Port Infrastructure','Port Traffic','Rail Freight','Rail Passengers','Rail Lines in Km','Air Freight','Air Passengers','Number of Flights','Liner Index','Mobile Cellular Subscriptions','Natural Gas','Oil', '% Internet Users','Broadband Subscriptions','Secure Servers','Hydro','Nuclear','Renewable (not Hydro)'))
+
+yplot <- ggplot(all.mods, aes(estimate,model,colour = category)) + geom_point() + geom_errorbarh(aes(xmin = conf_low, xmax = conf_high, height = 0)) + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + facet_grid(.~all.mods$term, scales = 'free') + geom_vline(aes(xintercept = 0, colour = "grey60"), linetype = 2)
+
+yplot
+
+
+
+am4 <- tidying_func(mod.air.4, cat = 'Modern', name = 'Number of Flights')
+am5 <- tidying_func(mod.air.5, cat = 'Modern', name = 'Air Passengers')
+am6 <- tidying_func(mod.air.6, cat = 'Modern', name = 'Air Freight')
+air.mods <- rbind(am4,am5,am6)
+
+rm4 <- tidying_func(mod.rail.1, cat = 'Established', name = 'Rail Lines in Km')
+rm5 <- tidying_func(mod.rail.2, cat = 'Established', name = 'Rail Passengers')
+rm6 <- tidying_func(mod.rail.3, cat = 'Established', name = 'Rail Freight')
+rail.mods <- rbind(rm4,rm5,rm6)
+
+wm4 <- tidying_func(mod.water.4, cat = 'Established', name = 'Port Traffic')
+wm5 <- tidying_func(mod.water.5, cat = 'Modern', name = 'Liner Index')
+wm6 <- tidying_func(mod.water.6, cat = 'Established', name = 'Port Infrastructure')
+water.mods <- rbind(wm4,wm5,wm6)
+
+
+tm6 <- tidying_func(mod.tele.6, cat = 'Established', name = 'Fixed Phone Subscriptions')
+tm7 <- tidying_func(mod.tele.7, cat = 'Modern', name = 'Mobile Cellular Subscriptions')
+tm8 <- tidying_func(mod.tele.8, cat = 'Advanced', name = 'Broadband Subscriptions')
+tm9 <- tidying_func(mod.tele.9, cat = 'Advanced', name = '% Internet Users')
+tm10 <- tidying_func(mod.tele.10, cat = 'Advanced', name = 'Secure Servers')
+tele.mods <- rbind(tm6,tm7,tm8,tm9,tm10)
+
+pm9 <- tidying_func(mod.power.9, cat = 'Established', name = 'Fossil Fuels')
+pm10 <- tidying_func(mod.power.10, cat = 'Established', name = 'Coal')
+pm11 <- tidying_func(mod.power.11, cat = 'Modern', name = 'Oil')
+pm12 <- tidying_func(mod.power.12, cat = 'Advanced', name = 'Nuclear')
+pm13 <- tidying_func(mod.power.13, cat = 'Advanced', name = 'Hydro')
+pm14 <- tidying_func(mod.power.14, cat = 'Modern', name = 'Natural Gas')
+pm15 <- tidying_func(mod.power.15, cat = 'Advanced', name = 'Renewable (not Hydro)')
+pm16 <- tidying_func(mod.power.16, cat = 'Advanced', name = '% with Power')
+power.mods <- rbind(pm9,pm10,pm11,pm12,pm13,pm14,pm15)
+
+
+
+
+
+all.mods <- rbind(air.mods,rail.mods,water.mods,tele.mods,power.mods) %>%
+  dplyr::arrange(category)
+
+all.mods$category <- as.factor(all.mods$category)
+all.mods$model <- factor(all.mods$model, levels = c('Coal','Fossil Fuels', 'Fixed Phone Subscriptions', 'Port Infrastructure','Port Traffic','Rail Freight','Rail Passengers','Rail Lines in Km','Air Freight','Air Passengers','Number of Flights','Liner Index','Mobile Cellular Subscriptions','Natural Gas','Oil', '% Internet Users','Broadband Subscriptions','Secure Servers','Hydro','Nuclear','Renewable (not Hydro)'))
+
+
+xplot <- ggplot(all.mods, aes(estimate,model,colour = category)) + geom_point() + geom_errorbarh(aes(xmin = conf_low, xmax = conf_high, height = 0)) + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + facet_grid(.~all.mods$term, scales = 'free') + geom_vline(aes(xintercept = 0, colour = "grey60"), linetype = 2)
+
+xplot
+
+```

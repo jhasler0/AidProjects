@@ -1,0 +1,397 @@
+---
+title: "Opening the Black Box on Intl Aid Data Section"
+author: "Jack Hasler"
+date: "August 3, 2018"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+header-includes: \usepackage{rotating, graphicx}
+---
+
+So this is the document for preparing and presenting results. Moving things over from various other files. The goal of this is to be a working document that can eventually become an appendix to the paper. We'll pull our main models from here and keep the others as robustness checks.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+Importing the libraries that we'll need for all of the following projects.
+
+```{r results=FALSE, message=FALSE}
+library(readr)
+library(tidyverse)
+library(countrycode)
+library(car)
+library(plm)
+library(readxl)
+library(wbstats)
+library(stargazer)
+library(kableExtra)
+library(knitr)
+
+library(dotwhisker)
+library(broom)
+```
+
+Gonna break this into three big sections for now. (1) Analysis by Recipient (target?) country, (2) Analysis by donor-recipient dyad, and (3) Subnational analysis. If there are not some descriptive statistics in every section, there should be!
+
+##Analysis by Recipient-Year
+
+
+```{r import_codes, message = FALSE}
+#Importing channel codes
+modified_crs_channel_codes <- read_delim("new_channel_codes.csv",",", escape_double = FALSE, trim_ws = TRUE)
+
+#selecting and renaming as necessary
+channel_codes <- modified_crs_channel_codes %>%
+  select(`Channel ID`, ch_type,ch_identity) %>%
+  rename(code = `Channel ID`)
+rm(modified_crs_channel_codes)
+#turning into factors
+channel_codes$ch_type <- as.factor(channel_codes$ch_type)
+channel_codes$ch_identity <- as.factor(channel_codes$ch_identity)
+
+#Importing dem purpose codes. Right now these are the "loose" codings. More narrow options exist in dempurposecodes,csv
+dempurposecodes <- read_csv("dempurposecodes3.csv")
+dempurposecodes <- dempurposecodes %>%
+  filter(dem_purpose==1)%>%
+  select(PurposeCode)
+```
+
+
+##Analysis by Dyad-Year
+```{r dyad_crs_program}
+#This is a function that takes a by year crs_data set, a set of channel codes, and a set of dem purpose codes. It removes unneeded variables and filters out NAs. It then recodes projects with our channel codes which are broader than the original ones. It also gets rid of observations that are not in our set of dem_purpose codes. Finally it reshapes the data a bit to poop out a data frame with observations that are RECIPIENT-YEAR. Variables include the total amount of aid overall and by each channel type. Percentages are also caculated by each channel type.
+
+crs_reshape_dy <- function(crs_data, ch_codes, dempurposecodes){
+  
+  #This chunk selects necessary variables (donor,recipient, channel, purpose and disbursement) and filters
+  #out unwanted donors, recipients and obs with missing channel codes.
+  crs_data <- crs_data %>%
+    select(Year,RecipientCode,RecipientName,DonorCode,DonorName,
+           usd_disbursement,ChannelCode,PurposeCode) %>%
+    na.omit() %>%
+    filter(!(RecipientCode %in% c(88,89,189,289,489,689,389,380,298,619,798,889,789,679,498,9998,589))) %>%
+    filter(PurposeCode %in% dempurposecodes$PurposeCode) %>%
+    filter(DonorCode %in% c(1,2,3,4,5,6,7,8,9,10,11,12,13,18,20,21,22,40,50,61,68,69,75,76,301,302,701,742,801,820,82,83,84,358,55,546)) %>%
+    filter(!is.na(ChannelCode))
+  #merge with channelcodes
+  crs_data <- merge(crs_data, channel_codes, by.x = 'ChannelCode', by.y = 'code', all.x = TRUE)
+  #counts and aid totals for all types
+  crs_data <- crs_data %>%
+    group_by(Year,DonorCode,RecipientCode) %>%
+    add_count(sort = TRUE) %>%
+    mutate(total_disbursement = sum(usd_disbursement, na.rm = TRUE)) %>%
+    ungroup()
+  
+  crs_data$ch_type2 = ifelse(crs_data$ch_type == 'government'&crs_data$ch_identity == 'donor','government_donor', ifelse(crs_data$ch_type == 'government'&crs_data$ch_identity == 'recipient','government_recipient', ifelse(crs_data$ch_type == 'government'&(crs_data$ch_identity == 'other'|crs_data$ch_identity == 'thirdparty'),'government_other',ifelse(crs_data$ch_type == 'publicprivate'|crs_data$ch_type == 'corporation','corporation',ifelse(crs_data$ch_type == 'network'|crs_data$ch_type == 'edu'|crs_data$ch_type=='ngo','ngo', ifelse(crs_data$ch_type == 'igo', 'igo', ifelse(crs_data$ch_type == 'other', 'other',crs_data$ch_type)))))))
+  crs_data$ch_type <- crs_data$ch_type2
+
+
+  
+  #This giant block splits it up by type and subtype-identity. 
+  crs_data2 <- crs_data %>%
+    group_by(Year,RecipientCode,DonorCode,ch_type) %>%
+    mutate(
+      gov_d_total = ifelse(ch_type == 'government_donor',sum(usd_disbursement,na.rm = TRUE),0),
+      gov_r_total = ifelse(ch_type == 'government_recipient',sum(usd_disbursement,na.rm = TRUE),0),
+      gov_o_total = ifelse(ch_type == 'government_other',sum(usd_disbursement,na.rm = TRUE),0),
+      gov_total = ifelse(ch_type == 'government',sum(usd_disbursement, na.rm = TRUE),0),
+      corp_total = ifelse(ch_type == 'corporation',sum(usd_disbursement,na.rm = TRUE),0),
+      ngo_total = ifelse(ch_type == 'ngo',sum(usd_disbursement,na.rm = TRUE),0),
+      igo_total = ifelse(ch_type == 'igo',sum(usd_disbursement,na.rm = TRUE),0),
+      other_total = ifelse(ch_type == 'other',sum(usd_disbursement,na.rm = TRUE),0)
+    ) %>%
+    ungroup() %>%
+    group_by(Year,DonorCode,RecipientCode) %>%
+    select(Year,RecipientCode,RecipientName,DonorCode,DonorName,n,total_disbursement,gov_total,gov_d_total,gov_r_total,gov_o_total,corp_total,ngo_total,igo_total,other_total) %>%
+    mutate(
+      gov_d_total = max(round(gov_d_total,6), na.rm = TRUE),
+      gov_r_total = max(round(gov_r_total,6), na.rm = TRUE),
+      gov_o_total = max(round(gov_o_total,6), na.rm = TRUE),
+      gov_total = max(round(gov_d_total+gov_r_total+gov_o_total,6), na.rm = TRUE),
+      corp_total = max(round(corp_total,6), na.rm = TRUE),
+      ngo_total = max(round(ngo_total,6), na.rm = TRUE),
+      igo_total = max(round(igo_total,6), na.rm = TRUE),
+      other_total = max(round(other_total,6), na.rm = TRUE)
+    ) %>%
+    unique() %>%
+    ungroup() %>%
+    mutate(
+      gov_d_percent = round(gov_d_total / total_disbursement,3),
+      gov_r_percent = round(gov_r_total / total_disbursement,3),
+      gov_o_percent = round(gov_o_total / total_disbursement,3),
+      corp_percent = round(corp_total / total_disbursement,3),
+      ngo_percent = round(ngo_total / total_disbursement,3),
+      igo_percent = round(igo_total / total_disbursement,3),
+      other_percent = round(other_total / total_disbursement,3),
+      gov_percent = round(gov_total / total_disbursement,3)
+    ) 
+  #Return the data frame.
+  crs_data2
+}
+```
+
+```{r dyad_import_crs_data, message=FALSE}
+#This chunk imports and merges all of the yearly CRS data according to the above function.
+#vector of the file name years. Early ones are grouped together. 1973-94 is omitted as it serves as the base case below.
+years <- c('1995-99','2000-01','2002-03','2004-05','2006','2007','2008','2009','2010','2011','2012','2013','2014','2015','2016')
+
+#importing and running crs_by_types on the base case
+load(file = './CRS 1973-94 data.RData')
+crs_by_types <- crs_reshape_dy(crs_tmp,channel_codes,dempurposecodes)
+
+#importing, reshaping and appending each of the CRS data files.
+for (i in years){
+  filepath = paste0('./CRS ',i,' data.RData')
+  load(file = filepath)
+  tmp_df <- crs_reshape_dy(crs_tmp, channel_codes,dempurposecodes)
+  crs_by_types <- rbind(crs_by_types, tmp_df)
+}
+
+```
+
+#Lagged VDEM
+
+```{r dyad_import_and_merge_controls}
+crs_by_types$RecipientName <- ifelse(crs_by_types$RecipientCode == 247, 'Cote dIvoire',crs_by_types$RecipientName)
+crs_by_types$new.code <- countrycode(crs_by_types$RecipientName, origin = 'country.name', destination = 'iso3n')
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 247, 384, crs_by_types$new.code) #Cote d'Ivoire
+crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 860, 583, crs_by_types$new.code) #Federated States of Micronesia
+#crs_by_types$new.code <- ifelse(crs_by_types$RecipientCode == 63, 345, crs_by_types$new.code) #Serbia
+
+working <- crs_by_types %>%
+  filter(!is.na(Year)&!is.na(new.code)) %>%
+  filter(!is.infinite(ngo_total)|!is.infinite(gov_d_total)|!is.infinite(gov_r_total)|!is.infinite(gov_o_total)|!is.infinite(corp_total)|!is.infinite(igo_total)|!is.infinite(other_total))
+
+working$lead_year <- working$Year + 1
+
+p4v2017d <- read_excel("p4v2017.xls")
+polity <- p4v2017d %>%
+  filter(year >2004) %>%
+  select(country, year, polity,polity2)
+
+polity$new.code <- countrycode(polity$country, origin = 'country.name', destination = 'iso3n')
+polity$new.code <- ifelse(polity$country == "Serbia and Montenegro", 499, polity$new.code)
+
+working <- merge(working, polity, by.x = c('lead_year','new.code'), by.y = c('year','new.code'))
+
+lagpolity <- polity %>%
+  select(year, polity2, new.code) %>%
+  rename(lag_polity = polity2)
+
+working <- merge(working, lagpolity, by.x = c('Year','new.code'), by.y = c('year','new.code'))
+
+#Use this code to import and reformat vdem variables from scratch.
+#vdem <- read_csv("Country_Year_V-Dem_Extended_CSV_v8/Country_Year_V-Dem_Extended_CSV_v8/V-Dem-CY+Others-v8.csv")
+#vdem <- vdem %>%
+#  select(country_name,year,COWcode,v2x_polyarchy,v2x_libdem,v2x_partipdem,v2x_delibdem,v2x_egaldem,
+#         e_fh_cl,e_fh_pair,e_fh_pr,e_fh_rol,e_fh_status) %>%
+#  filter(year>1993)
+#vdem$new.code <- countrycode(vdem$COWcode, origin = 'cown', destination = 'iso3n')
+
+load('./vdem.RData')
+
+
+working <- merge(working, vdem, by.x = c('lead_year','new.code'),by.y = c('year','new.code'))
+lagvdem <- vdem %>%
+  select(year,new.code,v2x_polyarchy, v2x_libdem, v2x_partipdem) %>%
+  rename(lagpoly = v2x_polyarchy, laglib = v2x_libdem, lagpartip = v2x_partipdem)
+working <- merge(working, lagvdem, by.x = c('Year','new.code'),by.y = c('year','new.code'))
+
+working$DyadName <- paste(working$DonorName,working$RecipientName,sep = '-')
+
+##Pulling in some basic controls from the World Bank
+gdp <- wb(country = 'all', indicator = 'NY.GDP.PCAP.CD', startdate = '2003', enddate = '2018') %>%
+  rename(gdp = value, year = date) %>%
+  select(iso3c, year, gdp, country)
+urban <- wb(country = 'all', indicator = 'SP.URB.TOTL.IN.ZS', startdate = '2003', enddate = '2018') %>%
+  rename(urban = value, year = date) %>%
+  select(iso3c,year,urban)
+pop <- wb(country = 'all', indicator = 'SP.POP.TOTL', startdate = '2003', enddate = '2018') %>%
+  rename(pop = value, year = date) %>%
+  select(iso3c,year,pop)
+controls <- merge(gdp,merge(urban, pop, by = c('iso3c','year')), by = c('iso3c','year'))
+
+controls$new.code <- countrycode(controls$iso3c, origin = 'iso3c', destination = 'iso3n')
+controls$new.code <- ifelse(controls$iso3c == 'SRB',345,controls$new.code)
+#Note: All missingness from this command is fine. It is the wb grouped categories (e.g. 'world') and can be dropped.
+
+controls <- controls %>%
+  select(new.code,year,gdp,urban,pop)
+working <- merge(working, controls, by.x = c('lead_year','new.code'), by.y = c('year','new.code'), all.x = TRUE)
+
+working <- working %>%
+  arrange(DyadName,Year) %>%
+  group_by(DyadName) %>%
+  mutate(lag_polity2 = dplyr::lag(polity2, n = 1, default = NA),
+         lag_poly = dplyr::lag(v2x_polyarchy, n = 1, default = NA),
+         lag_lib = dplyr::lag(v2x_libdem, n = 1, default = NA),
+         lag_partip = dplyr::lag(v2x_partipdem, n = 1, default = NA)
+         ) %>%
+  mutate(diff_polity2 = polity2 - lag_polity2,
+         diff_poly = v2x_polyarchy - lag_poly,
+         diff_lib = v2x_libdem - lag_lib,
+         diff_partip = v2x_partipdem - lag_partip)
+
+working <- working %>%
+  filter(!is.na(DyadName)) #If everythikng is done correctly, this should remove no obs.
+```
+
+```{r dyad_year_models, message=FALSE, results='asis', warning=FALSE}
+dep.vars <- c('v2x_polyarchy','v2x_libdem','v2x_partipdem','polity2')
+
+working <- working %>%
+  filter(!is.na(v2x_polyarchy)&!is.na(v2x_libdem)&!is.na(v2x_partipdem)&!is.na(polity2)&!is.na(gov_d_total)&!is.na(gov_r_total)&!is.na(gov_o_total)&!is.na(other_total)&!is.na(ngo_total)&!is.na(igo_total)&!is.na(corp_total)&!is.na(gdp)&!is.na(urban)&!is.na(pop)&!is.na(other_total)&!is.na(lead_year)&!is.na(DyadName))
+
+library(robustHD)
+working$polity2 <- standardize(working$polity2)
+working$v2x_polyarchy <- standardize(working$v2x_polyarchy)
+working$v2x_libdem <- standardize(working$v2x_libdem)
+working$v2x_partipdem <- standardize(working$v2x_partipdem)
+working$v2x_delibdem <- standardize(working$v2x_delibdem)
+working$v2x_egaldem <- standardize(working$v2x_egaldem)
+
+
+working$org_total <- log(working$ngo_total + working$igo_total + 1)
+working$gov_total <- log(working$gov_d_total + working$gov_r_total + working$gov_o_total + 1)
+working$gov_d_total <- log(working$gov_d_total+1)
+working$gov_r_total <- log(working$gov_r_total+1)
+working$gov_o_total <- log(working$gov_o_total+1)
+working$ngo_total <- log(working$ngo_total+1)
+working$igo_total <- log(working$igo_total+1)
+working$corp_total <- log(working$corp_total+1)
+working$other_total <- log(working$other_total + 1)
+
+
+ind.vars.total <- c('gov_total','org_total','corp_total','other_total')
+
+ind.vars.total.controlled <- c('gov_total','org_total','corp_total','other_total','log(gdp)','urban','log(pop)')
+
+
+mod.poly <- plm(as.formula(paste('I(v2x_polyarchy)', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('DyadName'), data = working)
+mod.lib <- plm(as.formula(paste('I(v2x_libdem)', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('DyadName'), data = working)
+mod.partip <- plm(as.formula(paste('I(v2x_partipdem)', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('DyadName'), data = working)
+mod.polity <- plm(as.formula(paste('polity2', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('DyadName'), data = working)
+
+mod.egal <- plm(as.formula(paste('I(v2x_egaldem)', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('DyadName'), data = working)
+mod.delib <- plm(as.formula(paste('I(v2x_delibdem)', paste(c(ind.vars.total.controlled), collapse = '+'),sep='~')), model = 'within',index = c('DyadName'), data = working)
+
+stargazer(mod.poly,mod.lib,mod.partip,mod.polity, colnames = FALSE,dep.var.labels = c('Electoral','Liberal','Participatory','PolityIV'), title = 'Main Results', model.numbers = FALSE, covariate.labels = c('Gov','Org','Corporation','Other','log(GDP)','Urban','log(Population)'), font.size = 'small', column.sep.width = '1pt', type = 'text')
+
+```
+
+```{r coefficient_testing, results='asis'}
+library(sandwich)
+library(car)
+library(lmtest)
+
+coef_tests <- function(model){
+
+tests <- c("Gov v Org","Gov v Corp","Gov v Other","Org v Corp","Org v Other","Corp v Other")
+chi2 <- c(
+  linearHypothesis(model, "gov_total = org_total")$Chisq[2],
+  linearHypothesis(model, "gov_total = corp_total")$Chisq[2],
+  linearHypothesis(model, "gov_total = other_total")$Chisq[2],
+  linearHypothesis(model, "org_total = corp_total")$Chisq[2],
+  linearHypothesis(model, "org_total = other_total")$Chisq[2],
+  linearHypothesis(model, "corp_total = other_total")$Chisq[2])
+pvals <- c(
+  linearHypothesis(model, "gov_total = org_total")$`Pr(>Chisq)`[2],
+  linearHypothesis(model, "gov_total = corp_total")$`Pr(>Chisq)`[2],
+  linearHypothesis(model, "gov_total = other_total")$`Pr(>Chisq)`[2],
+  linearHypothesis(model, "org_total = corp_total")$`Pr(>Chisq)`[2],
+  linearHypothesis(model, "org_total = other_total")$`Pr(>Chisq)`[2],
+  linearHypothesis(model, "corp_total = other_total")$`Pr(>Chisq)`[2])
+
+
+tmp <- data.frame(tests, chi2, pvals)
+tmp$adjustedholm <- p.adjust(tmp$pvals, method = 'holm')
+tmp$adjustedby <- p.adjust(tmp$pvals, method = 'BY')
+tmp
+}
+
+
+tests.polity <- coef_tests(mod.polity)
+tests.poly <- coef_tests(mod.poly)
+tests.lib <- coef_tests(mod.lib)
+tests.partip <- coef_tests(mod.partip)
+tests.polity$Model <- "Polity"
+tests.poly$Model <- "Electoral"
+tests.lib$Model <- "Liberal"
+tests.partip$Model <- "Participatory"
+
+all.tests <- rbind(tests.polity, tests.poly, tests.lib, tests.partip)
+
+
+ggplot(all.tests, aes(pvals, tests, color = Model)) + geom_point() + labs(title = "Raw Tests")
+ggplot(all.tests, aes(adjustedholm, tests, color = Model)) + geom_point() + labs(title = "Holm Corrected Tests")
+ggplot(all.tests, aes(adjustedby, tests, color = Model)) + geom_point() + labs(title = "BY Corrected Tests")
+
+stargazer(coef_tests(mod.polity), type = 'html', summary = FALSE)
+stargazer(coef_tests(mod.poly), type = 'html', summary = FALSE)
+stargazer(coef_tests(mod.lib), type = 'html', summary = FALSE)
+stargazer(coef_tests(mod.partip), type = 'html', summary = FALSE)
+```
+
+
+```{r graph}
+mod.polity2 <- tidy(mod.polity) %>%
+  filter(term != "log(gdp)" & term != 'urban' & term != 'log(pop)') %>%
+  mutate(model = "Polity")
+mod.poly2 <- tidy(mod.poly) %>%
+  filter(term != "log(gdp)" & term != 'urban' & term != 'log(pop)') %>%
+  mutate(model = "Polarchy")
+mod.lib2 <- tidy(mod.lib) %>%
+  filter(term != "log(gdp)" & term != 'urban' & term != 'log(pop)') %>%
+  mutate(model = "Liberal")
+mod.partip2 <- tidy(mod.partip) %>%
+  filter(term != "log(gdp)" & term != 'urban' & term != 'log(pop)') %>%
+  mutate(model = "Participatory")
+mod.egal2 <- tidy(mod.egal) %>%
+  filter(term != "log(gdp)" & term != 'urban' & term != 'log(pop)') %>%
+  mutate(model = "Egalitarian")
+mod.delib2 <- tidy(mod.delib) %>%
+  filter(term != "log(gdp)" & term != 'urban' & term != 'log(pop)') %>%
+  mutate(model = "Deliberative")
+
+
+all_mods <- rbind(mod.polity2, mod.poly2, mod.lib2, mod.partip2)
+
+dwplot(all_mods) %>%
+  relabel_predictors(c('gov_d_total' = "Donor Gov",                       
+                      'gov_r_total' = "Target Gov", 
+                      'ngo_total' = "NGO", 
+                      'igo_total' = "IGO", 
+                      'corp_total' = "Corporations", 
+                      'other_total' = "Other")) +
+     theme_bw() + xlab("Coefficient Estimate") + ylab("") +
+     geom_vline(xintercept = 0, colour = "grey60", linetype = 2) +
+     ggtitle("Main Results") + 
+     scale_color_grey(name = "Dem Variable", labels = c('Polity', 'Electoral','Liberal','Participatory')) 
+
+
+```
+
+```{r vdem_desc_stats}
+
+cor(working$v2x_polyarchy, working$v2x_partipdem)
+cor(working$v2x_polyarchy, working$v2x_libdem)
+cor(working$v2x_libdem, working$v2x_partipdem)
+
+cor(working$v2x_polyarchy, working$v2x_egaldem)
+
+```
+
+```{}
+save(working, file  = './working_9_4.RData')
+```
+
+```{r standardize}
+working2 <- working
+
+
+
+```
+
+##Subnational Stuff

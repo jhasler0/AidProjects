@@ -1,0 +1,45 @@
+---
+title: "descriptive data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+load(file = './working_8_30.RData')
+
+donors <- working %>%
+  select(DonorName) %>%
+  arrange(DonorName) %>%
+  unique()
+
+kable(donors$DonorName)
+
+recipients <- working %>%
+  select(RecipientName) %>%
+  arrange(RecipientName) %>%
+  unique()
+
+kable(recipients$RecipientName)
+
+
+test <- crs_tmp %>%
+  filter(DonorName == 'Turkey'|DonorName == 'Chile'|DonorName == 'Israel'|DonorName == 'Mexico') %>%
+  filter(PurposeCode %in% dempurposecodes$PurposeCode)
+
+working %>%
+  filter(Year == 2016) %>%
+  group_by(RecipientName) %>%
+  summarise(v2x_polyarchy = mean(v2x_polyarchy, na.rm = TRUE), gov_d = sum(gov_d_total, na.rm = TRUE), gov_r = sum(gov_r_total, na.rm = TRUE), ngo = sum(ngo_total, na.rm = TRUE)) %>%
+  ggplot() + 
+    geom_point(aes(v2x_polyarchy,log(ngo+1)), color = 'green') + 
+    geom_point(aes(v2x_polyarchy,log(gov_d+1)), color = 'blue') + 
+    geom_point(aes(v2x_polyarchy,log(gov_r+1)), color = 'red') +
+  geom_smooth(aes(v2x_polyarchy, log(gov_r+1)),method='lm',formula=y~x)
+  
+```
